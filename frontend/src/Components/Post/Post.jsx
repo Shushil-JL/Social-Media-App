@@ -12,6 +12,10 @@ import {
 import { Link } from "react-router-dom";
 import "./Post.css";
 import { likePost } from "../../Actions/Post";
+import { getFollowingPosts } from "../../Actions/likes.length} likes</Typography>
+</button>
+
+<div className="";
 
 const Post = (
   { postId,
@@ -31,7 +35,9 @@ const Post = (
   const dispatch = useDispatch()
   const handleLike = () => {
     setLiked(!liked)
+
     dispatch(likePost(postId))
+    dispatch(getFollowingPosts())
   }
   return (
     <div className="post">
@@ -68,7 +74,7 @@ const Post = (
           margin: "1vmax 2vmax"
         }}
       >
-        <Typography>5 likes</Typography>
+        <Typography>{likes.length} likes</Typography>
       </button>
 
       <div className="postFooter">
