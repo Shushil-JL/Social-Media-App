@@ -5,7 +5,8 @@ const { createPost,
     getPostofFollowing,
     updateCaption,
     commentOnPost,
-    deleteComment
+    deleteComment,
+    getMyPosts
 } = require("../controllers/post")
 const { isAuthenticated } = require("../middlewares/auth")
 
@@ -16,6 +17,8 @@ router.route("/post/:id")
     .get(isAuthenticated, likeAndUlikePost)
     .put(isAuthenticated, updateCaption)
     .delete(isAuthenticated, deletePost)
+
+router.route("/my/posts").get(isAuthenticated, getMyPosts)
 
 router.route("/posts").get(isAuthenticated, getPostofFollowing)
 router.route("/post/comment/:id").put(isAuthenticated, commentOnPost).delete(isAuthenticated, deleteComment)

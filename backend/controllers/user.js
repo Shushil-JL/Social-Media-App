@@ -2,20 +2,27 @@ const User = require("../models/User")
 const Post = require("../models/Post")
 const { sendEmail } = require("../middlewares/sendEmail")
 const crypto = require("crypto")
+const cloudinary = require('cloudinary')
 
 exports.register = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+
+        const { avatar, name, email, password } = req.body;
         let user = await User.findOne({ email })
         if (user) return res.status(400).json({
             success: false,
             meessage: "User already exists"
 
         })
+        const myCloud = await cloudinary.uploader.upload(avatar, {
+            folder: "Avatars"
+        })
+
         user = await User.create({
-            name, email, password, avatar: {
-                public_id: "sampleid",
-                url:"https://media.istockphoto.com/id/1419532732/photo/diversity-in-working-team-using-internet-on-phones-and-digital-tablet-for-teamwork-growth-in.webp?b=1&s=612x612&w=0&k=20&c=PWbQL27aT7woHwQT34m2SGG7nZ4cz64UmCoRY7xWMms="
+            name: `@${name}`, email, password, avatar: {
+                public_id: myCloud.public_id,
+                // url: "https://media.istockphoto.com/id/1419532732/photo/diversity-in-working-team-using-internet-on-phones-and-digital-tablet-for-teamwork-growth-in.webp?b=1&s=612x612&w=0&k=20&c=PWbQL27aT7woHwQT34m2SGG7nZ4cz64UmCoRY7xWMms="
+                url: myCloud.secure_url
             }
         })
         const token = await user.generateToken()
@@ -42,7 +49,7 @@ exports.login = async (req, res) => {
         const { email, password } = req.body
 
 
-        const user = await User.findOne({ email }).select("+password")
+        const user = await User.findOne({ email }).select("+password").populate("posts followers following")
         if (!user) {
             return res.status(400).json({
                 success: false,
@@ -115,7 +122,6 @@ exports.updatePassword = async (req, res) => {
             })
         }
         user.password = newPassword
-        console.log(user.password)
         await user.save()
 
         res.status(200).json({
@@ -136,17 +142,34 @@ exports.updatePassword = async (req, res) => {
 exports.updateProfile = async (req, res) => {
     try {
         const user = await User.findById(req.user._id)
-        const { name, email } = req.body
+        const { avatar, name, email } = req.body
         if (!name || !email) {
             return res.status(400).json({
                 success: false,
                 message: "please provide name and email"
             })
         }
-        user.name = name
-        user.email = email
+        if (name) {
 
-        // user avatar to do
+            user.name = `@${name}`
+        }
+        if (email) {
+
+            user.email = email
+        }
+        if (avatar) {
+            await cloudinary.v2.uploader.destroy(post.avatar.public_id)
+
+            const myCloud = await cloudinary.uploader.upload(avatar, {
+                folder: "Avatars"
+            })
+
+            user.avatar.public_id = myCloud.public_id
+            // url="https://media.istockphoto.com/id/1419532732/photo/diversity-in-working-team-using-internet-on-phones-and-digital-tablet-for-teamwork-growth-in.webp?b=1&s=612x612&w=0&k=20&c=PWbQL27aT7woHwQT34m2SGG7nZ4cz64UmCoRY7xWMms="
+            user.avatar.url = myCloud.secure_url
+
+
+        }
         await user.save()
 
         res.status(200).json({
@@ -170,8 +193,10 @@ exports.deleteMyProfile = async (req, res) => {
         const following = user.following
         const userId = user._id
 
+        await cloudinary.v2.uploader.destroy(user.avatar.public_id) //deletes image from cloud
 
-        await user.deleteOne()
+        await user.deleteOne()  //delete from database
+
 
         // logout user
         res.cookie("token", null, { expires: new Date(Date.now()), httpOnly: true })
@@ -179,6 +204,8 @@ exports.deleteMyProfile = async (req, res) => {
         // delete all posts of the user
         for (i = 0; i < posts.length; i++) {
             const post = await Post.findById(posts[i])
+            await cloudinary.v2.uploader.destroy(post.image.public_id)
+
             await post.deleteOne()
         }
 
@@ -190,6 +217,8 @@ exports.deleteMyProfile = async (req, res) => {
             follower.followers.splice(index, 1)
             await follower.save()
         }
+
+        // delete all likes and comments to do
 
 
         res.status(200).json({
@@ -209,7 +238,7 @@ exports.deleteMyProfile = async (req, res) => {
 
 exports.myProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id).populate("posts")
+        const user = await User.findById(req.user._id).populate("posts followers following")
 
 
         res.status(200).json({
@@ -228,7 +257,7 @@ exports.myProfile = async (req, res) => {
 
 exports.getUserProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.params.id).populate("posts")
+        const user = await User.findById(req.params.id).populate("posts followers following")
 
         if (!user) {
             return res.stast(404).json({
@@ -290,7 +319,7 @@ exports.forgetPassword = async (req, res) => {
         await user.save()
 
 
-        const resetUrl = `${req.protocol}://${req.get("host")}/api/v1/password/reset/${resetPasswordToken}`
+        const resetUrl = `${req.protocol}://${req.get("host")}/password/reset/${resetPasswordToken}`
         const message = `Click the link bellow to reset your password:\n\n${resetUrl}`
 
         try {
@@ -330,27 +359,27 @@ exports.resetPassword = async (req, res) => {
         // hash the reset token 
         const resetPasswordToken = crypto.createHash("sha256").update(req.params.token).digest("hex")
 
-// find the user with the hash token 
+        // find the user with the hash token 
         const user = await User.findOne({
             resetPasswordToken,
             resetPasswordExpire: { $gt: Date.now() }
         })
 
-        if(!user){
+        if (!user) {
             return res.status(401).json({
-                success:false,
-                message:"Token is invalid or has expired!"
+                success: false,
+                message: "Token is invalid or has expired!"
             })
         }
 
         user.password = req.body.password
-        user.resetPasswordToken= undefined
+        user.resetPasswordToken = undefined
         user.resetPasswordExpire = undefined
-        user.save()
+        await user.save()
 
         res.status(200).json({
-            success:true,
-            message:"Password reset successful"
+            success: true,
+            message: "Password reset successful"
         })
 
     } catch (error) {

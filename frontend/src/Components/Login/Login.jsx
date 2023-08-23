@@ -10,11 +10,11 @@ const Login = () => {
     const [password, setPassword] = useState("")
     const dispatch = useDispatch()
 
-    const loginHandler = (e) => {
-        console.log(email, password)
+    const loginHandler = async (e) => {
+        // console.log(email, password)
 
         e.preventDefault()
-        dispatch(loginUser(email, password))
+        await dispatch(loginUser(email, password))
     }
     return (
         <div className='login'>

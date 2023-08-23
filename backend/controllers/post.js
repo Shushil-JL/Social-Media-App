@@ -1,13 +1,18 @@
 const Post = require("../models/Post")
 const User = require("../models/User")
+const cloudinary = require("cloudinary")
 
 exports.createPost = async (req, res) => {
     try {
+        const myCloud = await cloudinary.uploader.upload(req.body.image, {
+            folder: "post"
+        })
         const newPostData = {
             caption: req.body.caption,
             image: {
-                public_id: req.body.public_id,
-                url: "https://media.istockphoto.com/id/155150763/photo/a-bouquet-of-pink-and-purple-flowers.jpg?s=612x612&w=0&k=20&c=DDb8e0yo6EkibRSFrfkCuBLLzrHU10w4lhNbFMdw0EM=",
+                public_id: myCloud.public_id,
+                // url: "https://media.istockphoto.com/id/155150763/photo/a-bouquet-of-pink-and-purple-flowers.jpg?s=612x612&w=0&k=20&c=DDb8e0yo6EkibRSFrfkCuBLLzrHU10w4lhNbFMdw0EM=",
+                url: myCloud.secure_url
             },
             owner: req.user._id,
 
@@ -15,13 +20,13 @@ exports.createPost = async (req, res) => {
         const newPost = await Post.create(newPostData)
         const user = await User.findById(req.user._id)
 
-        user.posts.push(newPost._id)
+        user.posts.unshift(newPost._id)
 
         await user.save()
 
         res.status(201).json({
             success: true,
-            newPost
+            message: "New post added"
         })
 
     } catch (error) {
@@ -33,6 +38,8 @@ exports.createPost = async (req, res) => {
     }
 
 }
+
+
 
 exports.deletePost = async (req, res) => {
     try {
@@ -49,6 +56,8 @@ exports.deletePost = async (req, res) => {
             })
 
         }
+
+        await cloudinary.v2.uploader.destroy(post.image.public_id)
 
         await post.deleteOne()
         const user = await User.findById(req.user._id)
@@ -174,12 +183,68 @@ exports.getPostofFollowing = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            posts:posts.reverse()
+            posts: posts.reverse()
         })
     } catch (error) {
         res.status(500).json({
             success: false,
             message: error.message
+        })
+
+    }
+}
+exports.getMyPosts = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id)
+
+        const posts = []
+        for (i = 0; i < user.posts.length; i++) {
+            const post = await Post.findById(user.posts[i]).populate("owner likes comments.user")
+            posts.push(post)
+        }
+        if (!posts) {
+            return res.status(404).json({
+                success: false,
+                message: "You have not posted anything yet"
+            })
+        }
+
+        res.status(200).json({
+            success: true,
+            posts
+        })
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        })
+
+    }
+}
+exports.getUserPosts = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id)
+
+        const posts = []
+        for (i = 0; i < user.posts.length; i++) {
+            const post = await Post.findById(user.posts[i]).populate("owner likes comments.user")
+            posts.push(post)
+        }
+        if (!posts) {
+            return res.status(404).json({
+                success: false,
+                message: "You have not posted anything yet"
+            })
+        }
+
+        res.status(200).json({
+            success: true,
+            posts
+        })
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message,
         })
 
     }
@@ -267,62 +332,68 @@ exports.commentOnPost = async (req, res) => {
     }
 }
 
-exports.deleteComment = async(req,res)=>{
+exports.deleteComment = async (req, res) => {
     try {
         const post = await Post.findById(req.params.id)
 
-        if(!post){
+        if (!post) {
             return res.status(404).json({
-                success:false,
-                message:"Post not found"
+                success: false,
+                message: "Post not found"
             })
         }
-        
+        if (!req.body.commentId) {
+            return res.status(404).json({
+                success: false,
+                message: "Comment doesnot exist"
+            })
+        }
 
-        if (post.owner.toString()===req.user._id.toString()) {
-            if(req.body.commentId===undefined){
+
+        if (post.owner.toString() === req.user._id.toString()) {
+            if (req.body.commentId === undefined) {
                 return res.status(400).json({
-                    success:false,
-                    message:"Comment id is required"
+                    success: false,
+                    message: "Comment id is required"
                 })
             }
 
             post.comments.forEach((item, index) => {
                 if (item._id.toString() === req.body.commentId.toString()) {
-                    return post.comments.splice(index,1)
+                    return post.comments.splice(index, 1)
                 }
-    
+
             })
             await post.save()
             res.status(200).json({
-                success:true,
-                message:"Comment deleted",
+                success: true,
+                message: "Comment deleted",
             })
 
-            
+
         } else {
 
             post.comments.forEach((item, index) => {
                 if (item.user.toString() === req.user._id.toString()) {
-                    return post.comments.splice(index,1)
+                    return post.comments.splice(index, 1)
                 }
-    
+
             })
-            
+
             await post.save()
             res.status(200).json({
-                success:true,
-                message:"Comment deleted",
+                success: true,
+                message: "Comment deleted",
             })
         }
 
-        
+
     } catch (error) {
         res.status(500).json({
             success: false,
             message: error.message
         })
 
-        
+
     }
 }

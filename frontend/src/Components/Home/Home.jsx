@@ -17,7 +17,14 @@ const Home = () => {
         dispatch(getFollowingPosts())
         dispatch(getAllUsers())
 
-    }, [dispatch])
+        if (error) {
+            dispatch({
+                type: "clearErrors"
+            })
+        }
+
+
+    }, [dispatch, error])
 
     return (
         loading ? <Loader /> : <div className="home">
@@ -41,7 +48,7 @@ const Home = () => {
                 )) : <Typography variant='h6'>No Posts yet</Typography>}
             </div>
             <div className="homeright">
-                {users && users.length > 0 ? (
+                {userLoading ? <Loader /> : users && users.length > 0 ? (
                     users.map((user) => (
                         <User
                             key={user._id}
