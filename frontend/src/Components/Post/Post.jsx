@@ -30,6 +30,7 @@ const Post = (
     isAccount = false }
 ) => {
 
+  
   const [liked, setLiked] = useState(false)
   const [likesToggle, setLikeToggle] = useState(false)
   const [commentToggle, setCommentToggle] = useState(false)

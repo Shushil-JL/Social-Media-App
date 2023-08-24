@@ -219,8 +219,24 @@ exports.deleteMyProfile = async (req, res) => {
         }
 
         // delete all likes and comments to do
+        const allPost = await Post.find()
 
+        for (let i = 0; i < allPost.length; i++) {
+            const post = await Post.findById(allPost[i]._id)
+            // to delete user comments
+            for (let j = 0; j < post.comments.length; j++) {
+                if (post.comments[j].user === userId) {
+                    post.comments.splice(j, 1)
+                }
+            }
+            // to delete user likes
+            for (let j = 0; j < post.likes.length; j++) {
+                if (post.likes[j].user === userId) {
+                    post.likes.splice(j, 1)
+                }
+            }
 
+        }
         res.status(200).json({
             success: true,
             message: "Profile deleted"
@@ -276,13 +292,12 @@ exports.getUserProfile = async (req, res) => {
             success: false,
             message: error.message,
         })
-
     }
 }
 
 exports.getAllUsers = async (req, res) => {
     try {
-        const users = await User.find({})
+        const users = await User.find({ name: { $regex: req.query.name, $options: 'i' } })
         if (!users) {
             return res.status(404).json({
                 success: false,

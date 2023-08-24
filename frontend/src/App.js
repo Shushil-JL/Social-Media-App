@@ -14,6 +14,8 @@ import UpdatePassword from './Components/UpdatePassword/UpdatePassword';
 import ForgetPassword from './Components/ForgetPassword/ForgetPassword';
 import ResetPassword from './Components/ResetPassword/ResetPassword';
 import UserProfile from './Components/UserProfile/UserProfile';
+import Search from './Components/Search/Search';
+import NotFound from './Components/NotFound/NotFound';
 function App() {
 
   const { isAuthenticated } = useSelector((state) => state.user)
@@ -38,6 +40,10 @@ function App() {
         <Route path='/forget/password' element={isAuthenticated ? <Home /> : <ForgetPassword />}></Route>
         <Route path='/password/reset/:token' element={isAuthenticated ? <Home /> : <ResetPassword />}></Route>
         <Route path="/user/:id" element={isAuthenticated ? <UserProfile /> : <Login />}></Route>
+        <Route path="/search" element={isAuthenticated ? <Search /> : <Login />}></Route>
+
+        <Route path='*' element={<NotFound />}></Route>
+
 
 
       </Routes>

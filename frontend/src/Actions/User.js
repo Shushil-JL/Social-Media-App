@@ -265,14 +265,14 @@ export const getMyPosts = () => async (dispatch) => {
     }
 }
 
-export const getAllUsers = () => async (dispatch) => {
+export const getAllUsers = (name = "") => async (dispatch) => {
     try {
 
         dispatch({
             type: "getAllUserRequest"
         })
 
-        const { data } = await axios.get("/api/v1/users")
+        const { data } = await axios.get(`/api/v1/users?name=${name}`)
         dispatch({
             type: "getAllUserSuccess",
             payload: data.users

@@ -10,14 +10,15 @@ import { useParams } from 'react-router-dom'
 const UserProfile = () => {
     const dispatch = useDispatch()
 
-    const { user: me, loading: userLoading } = useSelector(state => state.user)
+    const { user: me, } = useSelector(state => state.user)
     const { user } = useSelector((state) => state.userProfile)
-    const { loading, error, posts } = useSelector(state => state.userPosts)
+    const { loading, posts } = useSelector(state => state.userPosts)
 
     const [followersToggle, setFollowersToggle] = useState(false)
     const [followingToggle, setFollowingToggle] = useState(false)
     const [following, setFollowing] = useState(false)
     const [myProfile, setMyProfile] = useState(false)
+
 
     const params = useParams()
     const followHandler = async () => {
@@ -32,14 +33,28 @@ const UserProfile = () => {
     useEffect(() => {
         dispatch(getUserProfile(params.id))
         dispatch(getUserPosts(params.id))
+
+
+    }, [dispatch, params.id])
+
+    useEffect(() => {
         if (me._id === params.id) {
             setMyProfile(true)
+        } else {
+            setMyProfile(false)
+        }
+        if (user) {
+            user.followers.forEach(follower => {
+                if (follower._id === me._id) {
+                    setFollowing(true)
+                }
+            })
         }
 
+    }, [user, params.id, me._id])
 
-    }, [dispatch, error, params.id, me._id])
 
-    return loading === true || userLoading === true ? (<Loader />) : (
+    return loading ? (<Loader />) : (
         <div className='account'>
             <div className="accountleft">
 
